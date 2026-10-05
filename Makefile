@@ -66,6 +66,7 @@ generate-project-sources: $(TUIST_SOURCE_GENERATION_STAMP) # Resolve packages an
 
 $(TUIST_INSTALL_STAMP): $(TUIST_GENERATION_INPUTS) | preflight
 	mkdir -p "$(TUIST_GENERATION_STAMP_DIR)"
+	$(SELECT_DEVELOPER_DIR); \
 	mise exec -- tuist install $(TUIST_INSTALL_FLAGS)
 	touch "$@"
 
@@ -74,6 +75,7 @@ $(TUIST_GENERATION_STAMP_DIR)/%: $(TUIST_GENERATION_INPUTS) $(TUIST_INSTALL_STAM
 	find "$(TUIST_GENERATION_STAMP_DIR)" -mindepth 1 -maxdepth 1 ! -name '.installed' -delete
 	rm -rf supacode.xcodeproj supacode.xcworkspace
 	rm -rf "$(DERIVED_DATA_PATH)"
+	$(SELECT_DEVELOPER_DIR); \
 	mise exec -- tuist generate --no-open --cache-profile "$*"
 	touch "$@"
 
@@ -83,6 +85,7 @@ $(TUIST_RELEASE_GENERATION_STAMP): $(TUIST_GENERATION_INPUTS) $(TUIST_INSTALL_ST
 	find "$(TUIST_GENERATION_STAMP_DIR)" -mindepth 1 -maxdepth 1 ! -name '.installed' -delete
 	rm -rf supacode.xcodeproj supacode.xcworkspace
 	rm -rf "$(DERIVED_DATA_PATH)"
+	$(SELECT_DEVELOPER_DIR); \
 	mise exec -- tuist generate --no-open --cache-profile development --configuration Release
 	touch "$@"
 
