@@ -67,6 +67,7 @@ generate-project-sources: $(TUIST_SOURCE_GENERATION_STAMP) # Resolve packages an
 
 $(TUIST_INSTALL_STAMP): $(TUIST_GENERATION_INPUTS) | preflight
 	mkdir -p "$(TUIST_GENERATION_STAMP_DIR)"
+	$(SELECT_DEVELOPER_DIR); \
 	mise exec -- tuist install $(TUIST_INSTALL_FLAGS)
 	touch "$@"
 
