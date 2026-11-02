@@ -43,11 +43,12 @@ Trigger evidence: no mapping (under 4 files), no broad research.
 - `make test` and `make build-app` pass.
 
 ## RDD ledger
-RDD mode: on (global). Last reviewed boundary: branch point `1ffcc2e9` (merge-base with origin/main).
-Per task: tier and outcome recorded after each work-unit commit.
+RDD mode: on (global). Review boundary for this feature: `d84431bc` (HEAD before this feature's first commit; the 9 earlier commits on the branch belong to other work).
+- Work unit 1 (`725e0c81`, T1-T3): `gentle-ai review assess --committed-only --base-ref HEAD~1` with `--untracked-scope=exclude` (user chose to exclude `.atl/` and `odd/tasks/supacode-upstream-sync.md`): tier medium (`executable_change`), 4 paths, 134 changed lines, `review_due=false`, reason `under_budget`. Outcome: no review now; stays pending in the slice. Boundary not advanced.
+- First assess without the untracked declaration failed as `unassessable` (treated as high/due); resolved by the declaration above.
 
 ## Commits
-(none yet)
+- `725e0c81` fix(droid): re-register presence on prompt and tool hooks (T1, T2, T3)
 
 ## Progress
 - Document created; Engram mirror #1511 synced.
@@ -63,4 +64,4 @@ Per task: tier and outcome recorded after each work-unit commit.
 - Not verified: real Droid runtime behavior (SessionStart/SessionEnd order, ppid). Needs manual run after reinstalling Droid hooks.
 
 ## Next step
-RDD assess on the work-unit commit, then manual validation in the app.
+Manual validation in the app: reinstall Droid hooks in Settings (old hooks show outdated), run a spec and apply it in a new conversation; the tab must stay in Active. If the tab still flickers, capture hook order/pids (residual risk: old SessionEnd landing after new-session events).
