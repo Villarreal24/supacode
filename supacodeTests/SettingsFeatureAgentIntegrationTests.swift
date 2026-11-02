@@ -1204,10 +1204,11 @@ struct SettingsFeatureAgentIntegrationTests {
     // outdated agents, sorted by display name (persistent `pi` is excluded).
     #expect(state.agentInstallSheetAgents == [.codex, .grok, .kiro, .omp])
     // The main list omits not-installed (`grok`) and transiently-errored (`omp`)
-    // agents but keeps the persistent error (`pi`).
+    // agents but keeps the persistent error (`pi`). `droid` is unprobed here, so it
+    // counts as still-checking and renders in the main list.
     #expect(
       state.mainListAgentRows == [
-        .claude, .codex, .copilot, .antigravity, .hermes, .kimi, .kiro, .opencode, .pi,
+        .claude, .codex, .copilot, .droid, .antigravity, .hermes, .kimi, .kiro, .opencode, .pi,
       ]
     )
     // A transient error is modal-only; a persistent error is main-list-only; a
