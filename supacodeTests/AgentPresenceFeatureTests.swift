@@ -269,6 +269,38 @@ struct AgentPresenceFeatureTests {
     #expect(harness.state.agents(forSurface: surfaceID, badgesEnabled: true).isEmpty)
   }
 
+  @Test func droidSessionStartAfterSessionEndReregistersSameProcessPid() {
+    // Droid "apply spec in a new conversation": the old SessionEnd clears the
+    // record while the process lives on; the next start must re-register it.
+    var harness = Harness()
+    let surfaceID = UUID()
+    let pid = getpid()
+
+    harness.send(.hookEventReceived(makeEvent(.sessionStart, agent: .droid, surfaceID: surfaceID, pid: pid)))
+    harness.send(.hookEventReceived(makeEvent(.sessionEnd, agent: .droid, surfaceID: surfaceID, pid: pid)))
+    harness.send(.hookEventReceived(makeEvent(.sessionStart, agent: .droid, surfaceID: surfaceID, pid: pid)))
+    harness.send(.hookEventReceived(makeEvent(.busy, agent: .droid, surfaceID: surfaceID, pid: pid)))
+
+    #expect(harness.state.agents(forSurface: surfaceID, badgesEnabled: true) == Set([.droid]))
+    let key = AgentPresenceFeature.PresenceKey(agent: .droid, surfaceID: surfaceID)
+    #expect(harness.state.records[key]?.pids == [pid])
+    #expect(harness.state.records[key]?.activity == .busy)
+  }
+
+  @Test func droidBusyAfterSessionEndWithoutStartStaysDropped() {
+    // Documents the gap the Droid hook fix closes: without a fresh
+    // SessionStart, a pid-bearing busy cannot re-seed a cleared record.
+    var harness = Harness()
+    let surfaceID = UUID()
+    let pid = getpid()
+
+    harness.send(.hookEventReceived(makeEvent(.sessionStart, agent: .droid, surfaceID: surfaceID, pid: pid)))
+    harness.send(.hookEventReceived(makeEvent(.sessionEnd, agent: .droid, surfaceID: surfaceID, pid: pid)))
+    harness.send(.hookEventReceived(makeEvent(.busy, agent: .droid, surfaceID: surfaceID, pid: pid)))
+
+    #expect(harness.state.agents(forSurface: surfaceID, badgesEnabled: true).isEmpty)
+  }
+
   @Test func surfaceClosedClearsEntriesEvenWithoutSessionEnd() {
     var harness = Harness()
     let surfaceID = UUID()

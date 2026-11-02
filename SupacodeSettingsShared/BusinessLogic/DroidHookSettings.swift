@@ -19,7 +19,7 @@ nonisolated enum DroidHookSettingsError: Error {
 
 // Factory Droid loads `~/.factory/hooks.json` and uses the Claude-compatible
 // PascalCase event names:
-// - UserPromptSubmit / PreToolUse fire `busy`
+// - UserPromptSubmit / PreToolUse fire `sessionStart` then `busy`
 // - PostToolUse fires `idle`
 // - Notification fires `awaitingInput` and forwards stdin as notification
 // - Stop fires `idle` and forwards notification
@@ -29,8 +29,11 @@ private nonisolated struct DroidHooksPayload: Encodable {
   static let awaitingInputToolMatcher = "AskUserQuestion|ExitPlanMode"
   private static let timeout = AgentHookSettingsCommand.timeoutSeconds
 
-  private static let busy = AgentHookSettingsCommand.compositeCommand(
-    events: [.busy], forwardStdinAsNotification: false, agent: .droid)
+  // Droid reuses one process across "new conversation" restarts, so the old
+  // SessionEnd clears presence without a fresh SessionStart following it.
+  // Re-registering before `busy` is idempotent in the reducer.
+  private static let presenceAndBusy = AgentHookSettingsCommand.compositeCommand(
+    events: [.sessionStart, .busy], forwardStdinAsNotification: false, agent: .droid)
   private static let idle = AgentHookSettingsCommand.compositeCommand(
     events: [.idle], forwardStdinAsNotification: false, agent: .droid)
   private static let awaitingInputAndNotify = AgentHookSettingsCommand.compositeCommand(
@@ -49,10 +52,10 @@ private nonisolated struct DroidHooksPayload: Encodable {
       .init(hooks: [.init(command: Self.sessionStart, timeout: Self.timeout)])
     ],
     "UserPromptSubmit": [
-      .init(hooks: [.init(command: Self.busy, timeout: Self.timeout)])
+      .init(hooks: [.init(command: Self.presenceAndBusy, timeout: Self.timeout)])
     ],
     "PreToolUse": [
-      .init(matcher: "", hooks: [.init(command: Self.busy, timeout: Self.timeout)]),
+      .init(matcher: "", hooks: [.init(command: Self.presenceAndBusy, timeout: Self.timeout)]),
       .init(
         matcher: Self.awaitingInputToolMatcher,
         hooks: [.init(command: Self.awaitingInput, timeout: Self.timeout)]

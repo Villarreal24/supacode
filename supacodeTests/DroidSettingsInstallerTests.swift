@@ -72,6 +72,29 @@ struct DroidSettingsInstallerTests {
     #expect(try installer.installState() == .installed)
   }
 
+  @Test func promptAndToolHooksReestablishPresenceBeforeBusy() throws {
+    // A "new conversation" reuses the Droid process, so the old SessionEnd
+    // clears presence; the next prompt or tool call must re-register it.
+    let hooks = try DroidHookSettings.hooksByEvent()
+    let presenceAndBusy = AgentHookSettingsCommand.compositeCommand(
+      events: [.sessionStart, .busy], forwardStdinAsNotification: false, agent: .droid)
+    let awaitingInput = AgentHookSettingsCommand.compositeCommand(
+      events: [.awaitingInput], forwardStdinAsNotification: false, agent: .droid)
+
+    func commands(event: String, matcher: String?) throws -> [String] {
+      let groups = try #require(hooks[event])
+      return groups.compactMap { group -> [String]? in
+        guard group.objectValue?["matcher"]?.stringValue == matcher else { return nil }
+        return group.objectValue?["hooks"]?.arrayValue?.compactMap { $0.objectValue?["command"]?.stringValue }
+      }.flatMap { $0 }
+    }
+
+    #expect(try commands(event: "UserPromptSubmit", matcher: nil) == [presenceAndBusy])
+    #expect(try commands(event: "PreToolUse", matcher: "") == [presenceAndBusy])
+    #expect(
+      try commands(event: "PreToolUse", matcher: "AskUserQuestion|ExitPlanMode") == [awaitingInput])
+  }
+
   @Test func installStateReturnsOutdatedWhenManagedBodyDrifted() throws {
     let homeURL = makeTempHomeURL()
     defer { try? fileManager.removeItem(at: homeURL) }
