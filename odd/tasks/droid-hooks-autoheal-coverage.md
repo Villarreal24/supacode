@@ -45,11 +45,12 @@ Behavior already exists (outdated detection and heal). T1 and T2 are regression 
 - Drift heal verified for Droid at installer and factory level, preserving user hooks.
 
 ## RDD ledger
-RDD mode: on (global). Review boundary: `a282fc26` (last commit of the previous feature).
-Per task: tier and outcome recorded after the work-unit commit. Untracked files `.atl/` and `odd/tasks/supacode-upstream-sync.md` are unrelated; ask the user before declaring `--untracked-scope=exclude`.
+RDD mode: on (global). Last reviewed boundary: `d84431bc` (nothing reviewed yet; boundary not advanced).
+- Work unit (`948451ca`): assess `--committed-only --base-ref a282fc26` with `--untracked-scope=exclude` (user chose to exclude `.atl/` and `odd/tasks/supacode-upstream-sync.md`): tier medium (`executable_change`, test file), 3 paths, 164 changed lines, `review_due=false`, `under_budget`.
+- Accumulated slice since `d84431bc` (both features): 6 paths, 299 changed lines, medium, `review_due=false`, `under_budget`. Next commit that reaches ~400 lines makes the slice due.
 
 ## Commits
-- (this work unit, hash recorded in the follow-up docs commit)
+- `948451ca` test(droid): cover outdated hook heal on install (T1, T2, T3)
 
 ## Progress
 - Document created; Engram mirror #1513 synced.
