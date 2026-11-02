@@ -13,6 +13,7 @@ enum LayoutPersistence {
   static func record(
     for layout: PaneLayout,
     origin: TerminalLayoutSnapshot? = nil,
+    windowedPaneIDs: Set<PaneID> = [],
     runtime: ContentRuntime,
     agentsBySurface: [UUID: [TerminalLayoutSnapshot.SurfaceAgentRecord]] = [:]
   ) -> LayoutRecord {
@@ -45,7 +46,8 @@ enum LayoutPersistence {
               workingDirectory: state.workingDirectory,
               agents: agents,
               frozenGrid: state.frozenGrid,
-              launch: state.launch
+              launch: state.launch,
+              resume: state.resume
             )
           )
         )
@@ -58,7 +60,7 @@ enum LayoutPersistence {
       for tabIndex in stripped.panes[paneIndex].tabs.indices {
         stripped.panes[paneIndex].tabs[tabIndex].isLocked = false
         guard case .terminal(let state) = stripped.panes[paneIndex].tabs[tabIndex].content.state,
-          state.launch != nil
+          state.launch != nil || state.resume != nil
         else { continue }
         stripped.panes[paneIndex].tabs[tabIndex].content = ContentSnapshot(
           id: stripped.panes[paneIndex].tabs[tabIndex].content.id,
@@ -72,6 +74,7 @@ enum LayoutPersistence {
         )
       }
     }
-    return LayoutRecord(layout: stripped, origin: origin)
+    return LayoutRecord(
+      layout: stripped, origin: origin, windowedPaneIDs: windowedPaneIDs)
   }
 }

@@ -1575,6 +1575,7 @@ final class WorktreeTerminalManager {
     guard appStore?.withState({ $0.terminals.layoutsAreReadOnly }) != true else { return }
     let record = LayoutPersistence.record(
       for: layoutState.layout,
+      windowedPaneIDs: layoutState.windowedPaneIDs,
       runtime: ContentRuntime.liveValue,
       agentsBySurface: currentAgentsBySurface?() ?? [:]
     )
@@ -2023,6 +2024,7 @@ final class WorktreeTerminalManager {
       guard let layoutState = layoutState(for: id) else { continue }
       let record = LayoutPersistence.record(
         for: layoutState.layout,
+        windowedPaneIDs: layoutState.windowedPaneIDs,
         runtime: ContentRuntime.liveValue,
         agentsBySurface: agentsBySurface ?? [:]
       )
