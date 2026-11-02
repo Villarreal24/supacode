@@ -95,6 +95,63 @@ struct DroidSettingsInstallerTests {
       try commands(event: "PreToolUse", matcher: "AskUserQuestion|ExitPlanMode") == [awaitingInput])
   }
 
+  @Test func preFixPromptHooksReadOutdatedAndHealOnInstallKeepingUserHooks() throws {
+    // Existing installs carry the busy-only prompt/tool hooks from before the
+    // presence fix. They must read as outdated (which arms the once-per-session
+    // auto-heal) and the heal must not drop user-authored hooks.
+    let homeURL = makeTempHomeURL()
+    defer { try? fileManager.removeItem(at: homeURL) }
+
+    let installer = DroidSettingsInstaller(homeDirectoryURL: homeURL, fileManager: fileManager)
+    try installer.installAllHooks()
+
+    let settingsURL = DroidSettingsInstaller.settingsURL(homeDirectoryURL: homeURL)
+    var root = try loadSettingsObject(at: settingsURL)
+    let busyOnly = AgentHookSettingsCommand.compositeCommand(
+      events: [.busy], forwardStdinAsNotification: false, agent: .droid)
+    func group(command: String, matcher: String? = nil) -> JSONValue {
+      var object: [String: JSONValue] = [
+        "hooks": .array([
+          .object([
+            "type": "command",
+            "command": .string(command),
+            "timeout": .int(AgentHookSettingsCommand.timeoutSeconds),
+          ])
+        ])
+      ]
+      if let matcher { object["matcher"] = .string(matcher) }
+      return .object(object)
+    }
+    root["UserPromptSubmit"] = .array([group(command: busyOnly)])
+    root["PreToolUse"] = .array([
+      group(command: busyOnly, matcher: ""),
+      group(
+        command: AgentHookSettingsCommand.compositeCommand(
+          events: [.awaitingInput], forwardStdinAsNotification: false, agent: .droid),
+        matcher: "AskUserQuestion|ExitPlanMode"),
+    ])
+    var postToolUse = root["PostToolUse"]?.arrayValue ?? []
+    postToolUse.append(group(command: "prettier --write"))
+    root["PostToolUse"] = .array(postToolUse)
+    try JSONEncoder().encode(JSONValue.object(root)).write(to: settingsURL)
+
+    #expect(try installer.installState() == .outdated)
+
+    try installer.installAllHooks()
+
+    #expect(try installer.installState() == .installed)
+    let healed = try String(contentsOf: settingsURL, encoding: .utf8)
+    #expect(healed.contains("prettier --write"))
+    let presenceAndBusy = AgentHookSettingsCommand.compositeCommand(
+      events: [.sessionStart, .busy], forwardStdinAsNotification: false, agent: .droid)
+    let healedRoot = try loadSettingsObject(at: settingsURL)
+    let promptCommands = healedRoot["UserPromptSubmit"]?.arrayValue?
+      .compactMap { $0.objectValue?["hooks"]?.arrayValue }
+      .flatMap { $0 }
+      .compactMap { $0.objectValue?["command"]?.stringValue }
+    #expect(promptCommands == [presenceAndBusy])
+  }
+
   @Test func installStateReturnsOutdatedWhenManagedBodyDrifted() throws {
     let homeURL = makeTempHomeURL()
     defer { try? fileManager.removeItem(at: homeURL) }

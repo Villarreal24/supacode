@@ -156,6 +156,46 @@ struct SkillAgentTests {
     )
   }
 
+  @Test func integrationFactoryHealsDriftedDroidHooksThroughInstall() async throws {
+    // The settings reducer's once-per-session auto-heal re-installs whatever the
+    // factory-built integration reports as `.outdated`; this pins that Droid's
+    // aggregate (hooks + skills) state takes that path.
+    let home = URL(fileURLWithPath: NSTemporaryDirectory())
+      .appending(path: "supacode-droid-agent-\(UUID().uuidString)", directoryHint: .isDirectory)
+    defer { try? FileManager.default.removeItem(at: home) }
+    try FileManager.default.createDirectory(
+      at: home.appending(path: SkillAgent.droid.configDirectoryName), withIntermediateDirectories: true)
+
+    let integration = AgentIntegrationFactory.make(for: .droid, homeDirectoryURL: home)
+    #expect(integration.agent == .droid)
+    #expect(try integration.state() == .notInstalled)
+    try await integration.install()
+    #expect(try integration.state() == .installed)
+
+    // Drift the managed hooks: a stale SessionStart command, ownership marker kept.
+    let hooksURL = DroidSettingsInstaller.settingsURL(homeDirectoryURL: home)
+    var root = try #require(
+      try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: hooksURL)).objectValue)
+    let stale = AgentHookSettingsCommand.compositeCommand(
+      events: [.busy], forwardStdinAsNotification: false, agent: .droid)
+    root["SessionStart"] = .array([
+      .object([
+        "hooks": .array([
+          .object([
+            "type": "command",
+            "command": .string(stale),
+            "timeout": .int(AgentHookSettingsCommand.timeoutSeconds),
+          ])
+        ])
+      ])
+    ])
+    try JSONEncoder().encode(JSONValue.object(root)).write(to: hooksURL)
+
+    #expect(try integration.state() == .outdated)
+    try await integration.install()
+    #expect(try integration.state() == .installed)
+  }
+
   @Test func relocatableAgentsInstallDirectlyIntoCustomConfigDir() async throws {
     // Every relocatable agent whose install is pure file I/O (no CLI subprocess).
     let agents: [SkillAgent] = [.claude, .copilot, .grok, .hermes, .kimi, .omp, .pi, .opencode]
